@@ -89,3 +89,37 @@ func JoinGame(gameID string, player *Player) (*Game, error) {
 
 	return game, nil
 }
+
+func GetGame(gameID string) (*Game, error) {
+	game, ok := games[gameID]
+	if !ok {
+		return nil, errors.New("game not found")
+	}
+	return game, nil
+}
+
+func (g *Game) StartGame(adminID string) error {
+	if g.Status != GameWaiting {
+		return errors.New("game already started")
+	}
+
+	if g.AdminID != adminID {
+		return errors.New("only admin can start game")
+	}
+
+	g.Status = GameActive
+
+	g.TopCard = NewRandomCard()
+	g.dealInitialHands()
+	// - emit/broadcast game state
+
+	return nil
+}
+
+func (g *Game) dealInitialHands() {
+	for _, p := range g.Players {
+		for i := 0; i < 7; i++ {
+			p.Hand = append(p.Hand, NewRandomCard())
+		}
+	}
+}

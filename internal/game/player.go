@@ -5,5 +5,5 @@ type Player struct {
 	Name     string
 	Seat     int
 	IsAdmin  bool
-	Hand     []Card
+	Hand     []*Card
 }
