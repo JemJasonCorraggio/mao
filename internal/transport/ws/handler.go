@@ -36,12 +36,14 @@ type GameState struct {
 }
 
 type PlayerGameState struct {
-	ID        string    `json:"id"`
-	Status    string    `json:"status"`
-	AdminID  string    `json:"adminId"`
-	Players  []string  `json:"players"`
-	Hand     []CardDTO `json:"hand"`
+  ID        string    `json:"id"`
+  Status    string    `json:"status"`
+  AdminID   string    `json:"adminId"`
+  Players   []string  `json:"players"`
+  Hand      []CardDTO `json:"hand"`
+  PlayerID  string    `json:"playerId"`
 }
+
 
 type CardDTO struct {
 	Rank string `json:"rank"`
@@ -135,15 +137,13 @@ func (h *Handler) Handle(w http.ResponseWriter, r *http.Request) {
 			clients[conn] = client
 
 
-			response := ServerMessage{
-				Type: "GAME_CREATED",
-				Payload: map[string]string{
-					"gameId": newGame.ID,
-				},
+			state := ServerMessage{
+				Type: "GAME_STATE",
+				Payload: toPlayerGameState(newGame, player.ID),
 			}
 
 			conn.SetWriteDeadline(time.Now().Add(writeWait))
-			if err := conn.WriteJSON(response); err != nil {
+			if err := conn.WriteJSON(state); err != nil {
 				log.Printf("write failed: %v", err)
 				return
 			}
@@ -172,16 +172,18 @@ func (h *Handler) Handle(w http.ResponseWriter, r *http.Request) {
 
 		clients[conn] = client
 
-		response := ServerMessage{
-			Type:    "GAME_STATE",
-			Payload: toGameState(joinedGame),
-		}
+		// response := ServerMessage{
+		// 	Type:    "GAME_STATE",
+		// 	Payload: toGameState(joinedGame),
+		// }
 
-		conn.SetWriteDeadline(time.Now().Add(writeWait))
-		if err := conn.WriteJSON(response); err != nil {
-			log.Printf("write failed: %v", err)
-			return
-		}
+		// conn.SetWriteDeadline(time.Now().Add(writeWait))
+		// if err := conn.WriteJSON(response); err != nil {
+		// 	log.Printf("write failed: %v", err)
+		// 	return
+		// }
+
+		broadcastGameState(msg.GameID, joinedGame)
 
 		case "START_GAME":
 		if msg.GameID == "" || msg.PlayerID == "" {
@@ -245,7 +247,9 @@ func toPlayerGameState(g *game.Game, playerID string) PlayerGameState {
 		AdminID:  g.AdminID,
 		Players:  players,
 		Hand:     hand,
+		PlayerID: playerID,
 	}
+
 }
 
 func broadcastGameState(gameID string, g *game.Game) {
