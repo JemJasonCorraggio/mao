@@ -42,12 +42,32 @@ type PlayerGameState struct {
   Players   []string  `json:"players"`
   Hand      []CardDTO `json:"hand"`
   PlayerID  string    `json:"playerId"`
+  CurrentAction *ActionDTO `json:"currentAction,omitempty"`
 }
-
 
 type CardDTO struct {
 	Rank string `json:"rank"`
 	Suit string `json:"suit"`
+}
+
+type ActionDTO struct {
+	ID        string   `json:"id"`
+	PlayerID string   `json:"playerId"`
+	Type      string   `json:"type"`
+	Card      *CardDTO `json:"card,omitempty"`
+}
+
+type ProposePlayCardMessage struct {
+	Type     string  `json:"type"` 
+	GameID   string  `json:"gameId"`
+	PlayerID string  `json:"playerId"`
+	Card     CardDTO `json:"card"`
+}
+
+type ProposeDrawMessage struct {
+	Type     string `json:"type"` 
+	GameID   string `json:"gameId"`
+	PlayerID string `json:"playerId"`
 }
 
 const (
@@ -172,17 +192,6 @@ func (h *Handler) Handle(w http.ResponseWriter, r *http.Request) {
 
 		clients[conn] = client
 
-		// response := ServerMessage{
-		// 	Type:    "GAME_STATE",
-		// 	Payload: toGameState(joinedGame),
-		// }
-
-		// conn.SetWriteDeadline(time.Now().Add(writeWait))
-		// if err := conn.WriteJSON(response); err != nil {
-		// 	log.Printf("write failed: %v", err)
-		// 	return
-		// }
-
 		broadcastGameState(msg.GameID, joinedGame)
 
 		case "START_GAME":
@@ -204,29 +213,87 @@ func (h *Handler) Handle(w http.ResponseWriter, r *http.Request) {
 
 		broadcastGameState(msg.GameID, gameInstance)
 
+		case "PROPOSE_PLAY":
+		var payload ProposePlayCardMessage
+		if err := json.Unmarshal(messageBytes, &payload); err != nil {
+			log.Printf("invalid PROPOSE_PLAY payload: %v", err)
+			continue
+		}
+
+		g, err := game.GetGame(payload.GameID)
+		if err != nil {
+			log.Printf("game not found: %v", err)
+			continue
+		}
+
+		action := &game.Action{
+			ID:       time.Now().Format(time.RFC3339Nano),
+			PlayerID: payload.PlayerID,
+			Type:     game.ActionPlayCard,
+			Card: &game.Card{
+				Rank: payload.Card.Rank,
+				Suit: payload.Card.Suit,
+			},
+		}
+
+		if err := g.ProposeAction(action); err != nil {
+			log.Printf("cannot propose action: %v", err)
+			continue
+		}
+
+		broadcastGameState(payload.GameID, g)
+
+		case "PROPOSE_DRAW":
+		var payload ProposeDrawMessage
+		if err := json.Unmarshal(messageBytes, &payload); err != nil {
+			log.Printf("invalid PROPOSE_DRAW payload: %v", err)
+			continue
+		}
+
+		g, err := game.GetGame(payload.GameID)
+		if err != nil {
+			log.Printf("game not found: %v", err)
+			continue
+		}
+
+		action := &game.Action{
+			ID:       time.Now().Format(time.RFC3339Nano),
+			PlayerID: payload.PlayerID,
+			Type:     game.ActionDraw,
+		}
+
+		if err := g.ProposeAction(action); err != nil {
+			log.Printf("cannot propose action: %v", err)
+			continue
+		}
+
+		broadcastGameState(payload.GameID, g)
+
 		default:
 			log.Printf("unknown message type: %s", msg.Type)
 		}
 	}
 }
 
-func toGameState(g *game.Game) GameState {
-	players := make([]string, 0, len(g.Players))
-	for _, p := range g.Players {
-		players = append(players, p.ID)
-	}
-
-	return GameState{
-		ID:      g.ID,
-		Status:  string(g.Status),
-		AdminID: g.AdminID,
-		Players: players,
-	}
-}
-
 func toPlayerGameState(g *game.Game, playerID string) PlayerGameState {
 	players := make([]string, 0, len(g.Players))
 	var hand []CardDTO
+	var actionDTO *ActionDTO
+
+	if g.CurrentAction != nil {
+		actionDTO = &ActionDTO{
+			ID:        g.CurrentAction.ID,
+			PlayerID: g.CurrentAction.PlayerID,
+			Type:     string(g.CurrentAction.Type),
+		}
+
+		if g.CurrentAction.Card != nil {
+			actionDTO.Card = &CardDTO{
+				Rank: g.CurrentAction.Card.Rank,
+				Suit: g.CurrentAction.Card.Suit,
+			}
+		}
+	}
 
 	for _, p := range g.Players {
 		players = append(players, p.ID)
@@ -248,6 +315,7 @@ func toPlayerGameState(g *game.Game, playerID string) PlayerGameState {
 		Players:  players,
 		Hand:     hand,
 		PlayerID: playerID,
+		CurrentAction: actionDTO,
 	}
 
 }

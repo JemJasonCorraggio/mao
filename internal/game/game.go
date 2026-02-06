@@ -59,7 +59,6 @@ func CreateGame(adminPlayer *Player) (*Game, error) {
 		AdminID: adminPlayer.ID,
 	}
 
-	// Store in memory
 	games[gameID] = game
 
 	return game, nil
@@ -122,4 +121,21 @@ func (g *Game) dealInitialHands() {
 			p.Hand = append(p.Hand, NewRandomCard())
 		}
 	}
+}
+
+func (g *Game) ProposeAction(a *Action) error {
+	if g.Status != GameActive {
+		return errors.New("game not active")
+	}
+
+	if g.CurrentAction != nil {
+		return errors.New("another action is already pending")
+	}
+
+	g.CurrentAction = a
+	return nil
+}
+
+func (g *Game) ClearAction() {
+	g.CurrentAction = nil
 }

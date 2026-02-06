@@ -5,7 +5,6 @@ function App() {
   const { connect, send, gameState, connected } = useGameSocket();
   const [gameId, setGameId] = useState("");
   const [name, setName] = useState("");
-  const activeGameId = gameState?.id;
 
   return (
     <div>
@@ -56,6 +55,7 @@ function App() {
 function GameView({ game, send }: { game: any; send: (msg: any) => void }) {
   const isAdmin = game.playerId === game.adminId;
   const canStart = game.status === "WAITING";
+  const isActive = game.status === "ACTIVE";
   return (
     <div>
       <h2>Game {game.id}</h2>
@@ -81,14 +81,58 @@ function GameView({ game, send }: { game: any; send: (msg: any) => void }) {
         ))}
       </ul>
 
+      {game.currentAction && (
+        <div style={{ border: "1px solid red", padding: 8, marginBottom: 12 }}>
+          <strong>Pending Action</strong>
+          <div>Player: {game.currentAction.playerId}</div>
+          <div>Type: {game.currentAction.type}</div>
+          {game.currentAction.card && (
+            <div>
+              Card: {game.currentAction.card.rank} of{" "}
+              {game.currentAction.card.suit}
+            </div>
+          )}
+        </div>
+      )}
+
+      {isActive && (<div>
+        <button
+        disabled={!!game.currentAction}
+        onClick={() =>
+          send({
+            type: "PROPOSE_DRAW",
+            gameId: game.id,
+            playerId: game.playerId,
+          })
+        }
+      >
+        Request Draw
+      </button>
+
       <h3>Your Hand</h3>
       <ul>
         {(game.hand ?? []).map((c: any, i: number) => (
           <li key={i}>
-            {c.rank} of {c.suit}
+            <button
+              disabled={!!game.currentAction}
+              onClick={() =>
+                send({
+                  type: "PROPOSE_PLAY",
+                  gameId: game.id,
+                  playerId: game.playerId,
+                  card: {
+                    rank: c.rank,
+                    suit: c.suit,
+                  },
+                })
+              }
+            >
+              Play {c.rank} of {c.suit}
+            </button>
           </li>
         ))}
       </ul>
+    </div>)}
     </div>
   );
 }
