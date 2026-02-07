@@ -21,6 +21,7 @@ type ClientMessage struct {
 	Type    string `json:"type"`
 	GameID  string `json:"gameId,omitempty"`
 	PlayerID string `json:"playerId,omitempty"`
+	Name     string `json:"name,omitempty"`
 }
 
 type ServerMessage struct {
@@ -55,6 +56,8 @@ type ActionDTO struct {
 	PlayerID string   `json:"playerId"`
 	Type      string   `json:"type"`
 	Card      *CardDTO `json:"card,omitempty"`
+	ChallengedBy []string `json:"challengedBy"`
+	AcceptedBy   []string `json:"acceptedBy"`
 }
 
 type ProposePlayCardMessage struct {
@@ -66,6 +69,18 @@ type ProposePlayCardMessage struct {
 
 type ProposeDrawMessage struct {
 	Type     string `json:"type"` 
+	GameID   string `json:"gameId"`
+	PlayerID string `json:"playerId"`
+}
+
+type AcceptActionMessage struct {
+	Type     string `json:"type"`
+	GameID   string `json:"gameId"`
+	PlayerID string `json:"playerId"`
+}
+
+type ChallengeActionMessage struct {
+	Type     string `json:"type"`
 	GameID   string `json:"gameId"`
 	PlayerID string `json:"playerId"`
 }
@@ -138,8 +153,13 @@ func (h *Handler) Handle(w http.ResponseWriter, r *http.Request) {
 
 		switch msg.Type {
 		case "CREATE_GAME":
+			if msg.Name == "" {
+				log.Printf("CREATE_GAME missing name")
+				continue
+			}
+
 			player := &game.Player{
-			ID: "player-1",
+				ID: msg.Name,
 			}
 
 			newGame, err := game.CreateGame(player)
@@ -174,8 +194,13 @@ func (h *Handler) Handle(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
+		if msg.Name == "" {
+			log.Printf("JOIN_GAME missing name")
+			continue
+		}
+
 		player := &game.Player{
-			ID: "player-2",
+			ID: msg.Name,
 		}
 
 		joinedGame, err := game.JoinGame(msg.GameID, player)
@@ -195,7 +220,7 @@ func (h *Handler) Handle(w http.ResponseWriter, r *http.Request) {
 		broadcastGameState(msg.GameID, joinedGame)
 
 		case "START_GAME":
-		if msg.GameID == "" || msg.PlayerID == "" {
+		if msg.GameID == "" {
 			log.Printf("START_GAME missing gameId or playerId")
 			continue
 		}
@@ -206,7 +231,9 @@ func (h *Handler) Handle(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
-		if err := gameInstance.StartGame(msg.PlayerID); err != nil {
+		client := clients[conn]
+
+		if err := gameInstance.StartGame(client.PlayerID); err != nil {
 			log.Printf("start game failed: %v", err)
 			continue
 		}
@@ -226,14 +253,18 @@ func (h *Handler) Handle(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
+		client := clients[conn]
+
 		action := &game.Action{
 			ID:       time.Now().Format(time.RFC3339Nano),
-			PlayerID: payload.PlayerID,
+			PlayerID: client.PlayerID,
 			Type:     game.ActionPlayCard,
 			Card: &game.Card{
 				Rank: payload.Card.Rank,
 				Suit: payload.Card.Suit,
 			},
+			AcceptedBy:   make(map[string]bool),
+			ChallengedBy: make(map[string]bool),
 		}
 
 		if err := g.ProposeAction(action); err != nil {
@@ -256,10 +287,14 @@ func (h *Handler) Handle(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
+		client := clients[conn]
+
 		action := &game.Action{
 			ID:       time.Now().Format(time.RFC3339Nano),
-			PlayerID: payload.PlayerID,
+			PlayerID: client.PlayerID,
 			Type:     game.ActionDraw,
+			AcceptedBy:   make(map[string]bool),
+			ChallengedBy: make(map[string]bool),
 		}
 
 		if err := g.ProposeAction(action); err != nil {
@@ -268,6 +303,50 @@ func (h *Handler) Handle(w http.ResponseWriter, r *http.Request) {
 		}
 
 		broadcastGameState(payload.GameID, g)
+
+		case "ACCEPT_ACTION":
+		var payload AcceptActionMessage
+		if err := json.Unmarshal(messageBytes, &payload); err != nil {
+			log.Printf("invalid ACCEPT_ACTION payload: %v", err)
+			continue
+		}
+
+		g, err := game.GetGame(payload.GameID)
+		if err != nil {
+			log.Printf("game not found: %v", err)
+			continue
+		}
+
+		client := clients[conn]
+
+		if err := g.AcceptAction(client.PlayerID); err != nil {
+			log.Printf("cannot accept action: %v", err)
+			continue
+		}
+
+		broadcastGameState(payload.GameID, g)
+
+	case "CHALLENGE_ACTION":
+	var payload ChallengeActionMessage
+	if err := json.Unmarshal(messageBytes, &payload); err != nil {
+		log.Printf("invalid CHALLENGE_ACTION payload: %v", err)
+		continue
+	}
+
+	g, err := game.GetGame(payload.GameID)
+	if err != nil {
+		log.Printf("game not found: %v", err)
+		continue
+	}
+
+	client := clients[conn]
+
+	if err := g.ChallengeAction(client.PlayerID); err != nil {
+		log.Printf("cannot challenge action: %v", err)
+		continue
+	}
+
+	broadcastGameState(payload.GameID, g)
 
 		default:
 			log.Printf("unknown message type: %s", msg.Type)
@@ -285,6 +364,14 @@ func toPlayerGameState(g *game.Game, playerID string) PlayerGameState {
 			ID:        g.CurrentAction.ID,
 			PlayerID: g.CurrentAction.PlayerID,
 			Type:     string(g.CurrentAction.Type),
+		}
+
+		for pid := range g.CurrentAction.ChallengedBy {
+			actionDTO.ChallengedBy = append(actionDTO.ChallengedBy, pid)
+		}
+
+		for pid := range g.CurrentAction.AcceptedBy {
+			actionDTO.AcceptedBy = append(actionDTO.AcceptedBy, pid)
 		}
 
 		if g.CurrentAction.Card != nil {

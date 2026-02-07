@@ -28,16 +28,18 @@ function App() {
             onChange={(e) => setGameId(e.target.value)}
           />
 
-          <button
+          <button disabled={!name}
             onClick={() =>
               send(
                 gameId
                   ? {
                       type: "JOIN_GAME",
                       gameId,
+                      name,
                     }
                   : {
                       type: "CREATE_GAME",
+                      name,
                     }
               )
             }
@@ -56,6 +58,21 @@ function GameView({ game, send }: { game: any; send: (msg: any) => void }) {
   const isAdmin = game.playerId === game.adminId;
   const canStart = game.status === "WAITING";
   const isActive = game.status === "ACTIVE";
+  const action = game.currentAction;
+  const isMyAction = action?.playerId === game.playerId;
+
+  const acceptedBy = action?.acceptedBy ?? [];
+  const challengedBy = action?.challengedBy ?? [];
+
+  const hasAccepted = acceptedBy.includes(game.playerId);
+  const hasChallenged = challengedBy.includes(game.playerId);
+
+  const canReact =
+    !!action &&
+    !isMyAction &&
+    !hasAccepted &&
+    !hasChallenged;
+
   return (
     <div>
       <h2>Game {game.id}</h2>
@@ -66,7 +83,6 @@ function GameView({ game, send }: { game: any; send: (msg: any) => void }) {
             send({
               type: "START_GAME",
               gameId: game.id,
-              playerId: game.playerId,
             })
           }
         >
@@ -81,28 +97,76 @@ function GameView({ game, send }: { game: any; send: (msg: any) => void }) {
         ))}
       </ul>
 
-      {game.currentAction && (
+      {action && (
         <div style={{ border: "1px solid red", padding: 8, marginBottom: 12 }}>
           <strong>Pending Action</strong>
-          <div>Player: {game.currentAction.playerId}</div>
-          <div>Type: {game.currentAction.type}</div>
-          {game.currentAction.card && (
+
+          <div>Player: {action.playerId}</div>
+          <div>Type: {action.type}</div>
+
+          {action.card && (
             <div>
-              Card: {game.currentAction.card.rank} of{" "}
-              {game.currentAction.card.suit}
+              Card: {action.card.rank} of {action.card.suit}
             </div>
           )}
-        </div>
+
+          <div>
+            <strong>Challenges:</strong>{" "}
+            {challengedBy.length > 0
+              ? challengedBy.join(", ")
+              : "None"}
+          </div>
+
+          <div>
+            <strong>Accepts:</strong>{" "}
+            {acceptedBy.length > 0
+              ? acceptedBy.join(", ")
+              : "None"}
+          </div>
+
+          {canReact && (
+            <div style={{ marginTop: 8 }}>
+              <button
+                onClick={() =>
+                  send({
+                    type: "ACCEPT_ACTION",
+                    gameId: game.id,
+                  })
+                }
+              >
+                Accept
+              </button>
+
+              <button
+                style={{ marginLeft: 8 }}
+                onClick={() =>
+                  send({
+                    type: "CHALLENGE_ACTION",
+                    gameId: game.id,
+                  })
+                }
+              >
+                Challenge
+              </button>
+            </div>
+          )}
+
+          {!canReact && !isMyAction && (
+            <div style={{ marginTop: 8, fontStyle: "italic" }}>
+              You have already responded
+            </div>
+          )}
+        </div> 
       )}
 
       {isActive && (<div>
         <button
         disabled={!!game.currentAction}
+        title={game.currentAction ? "Action pending resolution" : ""}
         onClick={() =>
           send({
             type: "PROPOSE_DRAW",
             gameId: game.id,
-            playerId: game.playerId,
           })
         }
       >
@@ -119,7 +183,6 @@ function GameView({ game, send }: { game: any; send: (msg: any) => void }) {
                 send({
                   type: "PROPOSE_PLAY",
                   gameId: game.id,
-                  playerId: game.playerId,
                   card: {
                     rank: c.rank,
                     suit: c.suit,

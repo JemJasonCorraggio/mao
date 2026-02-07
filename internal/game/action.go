@@ -11,6 +11,7 @@ type Action struct {
 	ID           string
 	PlayerID    string
 	Type         ActionType
-	Card         *Card      // nil for DRAW
-	ChallengedBy []string   // player IDs
+	Card         *Card     
+	AcceptedBy   map[string]bool
+	ChallengedBy map[string]bool 
 }

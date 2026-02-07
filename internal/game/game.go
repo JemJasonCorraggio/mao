@@ -139,3 +139,37 @@ func (g *Game) ProposeAction(a *Action) error {
 func (g *Game) ClearAction() {
 	g.CurrentAction = nil
 }
+
+func (g *Game) AcceptAction(playerID string) error {
+	if g.CurrentAction == nil {
+		return errors.New("no current action")
+	}
+
+	if playerID == g.CurrentAction.PlayerID {
+		return errors.New("cannot accept your own action")
+	}
+
+	if g.CurrentAction.ChallengedBy[playerID] {
+		return errors.New("already challenged")
+	}
+
+	g.CurrentAction.AcceptedBy[playerID] = true
+	return nil
+}
+
+func (g *Game) ChallengeAction(playerID string) error {
+	if g.CurrentAction == nil {
+		return errors.New("no current action")
+	}
+
+	if playerID == g.CurrentAction.PlayerID {
+		return errors.New("cannot challenge your own action")
+	}
+
+	if g.CurrentAction.AcceptedBy[playerID] {
+		return errors.New("already accepted")
+	}
+
+	g.CurrentAction.ChallengedBy[playerID] = true
+	return nil
+}
