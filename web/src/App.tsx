@@ -58,6 +58,7 @@ function GameView({ game, send }: { game: any; send: (msg: any) => void }) {
   const isAdmin = game.playerId === game.adminId;
   const canStart = game.status === "WAITING";
   const isActive = game.status === "ACTIVE";
+  const isEnded = game.status === "ENDED";
   const action = game.currentAction;
   const isMyAction = action?.playerId === game.playerId;
 
@@ -69,6 +70,7 @@ function GameView({ game, send }: { game: any; send: (msg: any) => void }) {
 
   const canReact =
     !!action &&
+    !action.resolution &&
     !isMyAction &&
     !hasAccepted &&
     !hasChallenged;
@@ -76,6 +78,10 @@ function GameView({ game, send }: { game: any; send: (msg: any) => void }) {
   return (
     <div>
       <h2>Game {game.id}</h2>
+
+      {isEnded && (
+        <h2 style={{ color: "green" }}>Game Over</h2>
+      )}
 
       {isAdmin && canStart && (
         <button
@@ -96,6 +102,29 @@ function GameView({ game, send }: { game: any; send: (msg: any) => void }) {
           <li key={p}>{p}</li>
         ))}
       </ul>
+
+      {isAdmin && isActive && (
+        <div style={{ marginTop: 16 }}>
+          <h3>Admin Penalties</h3>
+
+          {(game.players ?? []).map((p: string) => (
+            <button
+              key={p}
+              style={{ marginRight: 8, marginBottom: 4 }}
+              onClick={() =>
+                send({
+                  type: "ADMIN_PENALIZE",
+                  gameId: game.id,
+                  targetPlayerId: p,
+                  penaltyCount: 1,
+                })
+              }
+            >
+              Penalize {p}
+            </button>
+          ))}
+        </div>
+      )}
 
       {action && (
         <div style={{ border: "1px solid red", padding: 8, marginBottom: 12 }}>
@@ -150,6 +179,53 @@ function GameView({ game, send }: { game: any; send: (msg: any) => void }) {
               </button>
             </div>
           )}
+          {isAdmin && (
+            <div style={{ marginTop: 12, borderTop: "1px dashed #999", paddingTop: 8 }}>
+              <strong>Admin Resolution</strong>
+
+              <div style={{ marginTop: 8 }}>
+                <button
+                  onClick={() =>
+                    send({
+                      type: "RESOLVE_ACTION",
+                      gameId: game.id,
+                      resolution: "ACCEPT",
+                    })
+                  }
+                >
+                  Accept
+                </button>
+
+                <button
+                  style={{ marginLeft: 8 }}
+                  onClick={() =>
+                    send({
+                      type: "RESOLVE_ACTION",
+                      gameId: game.id,
+                      resolution: "ACCEPT_WITH_PENALTY",
+                      penaltyCount: 1,
+                    })
+                  }
+                >
+                  Accept + Penalty
+                </button>
+
+                <button
+                  style={{ marginLeft: 8 }}
+                  onClick={() =>
+                    send({
+                      type: "RESOLVE_ACTION",
+                      gameId: game.id,
+                      resolution: "REJECT",
+                      penaltyCount: 1,
+                    })
+                  }
+                >
+                  Reject
+                </button>
+              </div>
+            </div>
+          )}
 
           {!canReact && !isMyAction && (
             <div style={{ marginTop: 8, fontStyle: "italic" }}>
@@ -157,6 +233,19 @@ function GameView({ game, send }: { game: any; send: (msg: any) => void }) {
             </div>
           )}
         </div> 
+      )}
+
+      {action && !isAdmin && (
+        <div style={{ fontStyle: "italic", marginTop: 8 }}>
+          Waiting for admin to resolve…
+        </div>
+      )}
+
+      {game.topCard && (
+        <div>
+          <strong>Top Card:</strong>{" "}
+          {game.topCard.rank} of {game.topCard.suit}
+        </div>
       )}
 
       {isActive && (<div>

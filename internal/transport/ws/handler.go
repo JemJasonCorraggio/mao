@@ -18,10 +18,10 @@ type Client struct {
 var clients = make(map[*websocket.Conn]*Client)
 
 type ClientMessage struct {
-	Type    string `json:"type"`
-	GameID  string `json:"gameId,omitempty"`
-	PlayerID string `json:"playerId,omitempty"`
-	Name     string `json:"name,omitempty"`
+	Type   		string `json:"type"`
+	GameID  	string `json:"gameId,omitempty"`
+	PlayerID 	string `json:"playerId,omitempty"`
+	Name     	string `json:"name,omitempty"`
 }
 
 type ServerMessage struct {
@@ -37,13 +37,14 @@ type GameState struct {
 }
 
 type PlayerGameState struct {
-  ID        string    `json:"id"`
-  Status    string    `json:"status"`
-  AdminID   string    `json:"adminId"`
-  Players   []string  `json:"players"`
-  Hand      []CardDTO `json:"hand"`
-  PlayerID  string    `json:"playerId"`
+  ID        	string    `json:"id"`
+  Status    	string    `json:"status"`
+  AdminID   	string    `json:"adminId"`
+  Players   	[]string  `json:"players"`
+  Hand      	[]CardDTO `json:"hand"`
+  PlayerID  	string    `json:"playerId"`
   CurrentAction *ActionDTO `json:"currentAction,omitempty"`
+  TopCard    	*CardDTO   `json:"topCard,omitempty"`
 }
 
 type CardDTO struct {
@@ -52,12 +53,12 @@ type CardDTO struct {
 }
 
 type ActionDTO struct {
-	ID        string   `json:"id"`
-	PlayerID string   `json:"playerId"`
-	Type      string   `json:"type"`
-	Card      *CardDTO `json:"card,omitempty"`
-	ChallengedBy []string `json:"challengedBy"`
-	AcceptedBy   []string `json:"acceptedBy"`
+	ID        		string   `json:"id"`
+	PlayerID 		string   `json:"playerId"`
+	Type      		string   `json:"type"`
+	Card      		*CardDTO `json:"card,omitempty"`
+	ChallengedBy 	[]string `json:"challengedBy"`
+	AcceptedBy   	[]string `json:"acceptedBy"`
 }
 
 type ProposePlayCardMessage struct {
@@ -83,6 +84,20 @@ type ChallengeActionMessage struct {
 	Type     string `json:"type"`
 	GameID   string `json:"gameId"`
 	PlayerID string `json:"playerId"`
+}
+
+type ResolveActionMessage struct {
+	Type     		string `json:"type"`
+	GameID   		string `json:"gameId"`
+	Resolution 		game.ActionResolution `json:"resolution"`
+	PenaltyCount 	int    `json:"penaltyCount,omitempty"`
+}
+
+type AdminPenaltyMessage struct {
+	Type     		string `json:"type"`
+	GameID   		string `json:"gameId"`
+	TargetPlayerID 	string `json:"targetPlayerId"`
+	PenaltyCount 	int    `json:"penaltyCount,omitempty"`
 }
 
 const (
@@ -326,27 +341,75 @@ func (h *Handler) Handle(w http.ResponseWriter, r *http.Request) {
 
 		broadcastGameState(payload.GameID, g)
 
-	case "CHALLENGE_ACTION":
-	var payload ChallengeActionMessage
-	if err := json.Unmarshal(messageBytes, &payload); err != nil {
-		log.Printf("invalid CHALLENGE_ACTION payload: %v", err)
-		continue
-	}
+		case "CHALLENGE_ACTION":
+		var payload ChallengeActionMessage
+		if err := json.Unmarshal(messageBytes, &payload); err != nil {
+			log.Printf("invalid CHALLENGE_ACTION payload: %v", err)
+			continue
+		}
 
-	g, err := game.GetGame(payload.GameID)
-	if err != nil {
-		log.Printf("game not found: %v", err)
-		continue
-	}
+		g, err := game.GetGame(payload.GameID)
+		if err != nil {
+			log.Printf("game not found: %v", err)
+			continue
+		}
 
-	client := clients[conn]
+		client := clients[conn]
 
-	if err := g.ChallengeAction(client.PlayerID); err != nil {
-		log.Printf("cannot challenge action: %v", err)
-		continue
-	}
+		if err := g.ChallengeAction(client.PlayerID); err != nil {
+			log.Printf("cannot challenge action: %v", err)
+			continue
+		}
 
-	broadcastGameState(payload.GameID, g)
+		broadcastGameState(payload.GameID, g)
+
+		case "RESOLVE_ACTION":
+		var payload ResolveActionMessage
+		if err := json.Unmarshal(messageBytes, &payload); err != nil {
+			log.Printf("invalid RESOLVE_ACTION payload: %v", err)
+			continue
+		}
+
+		g, err := game.GetGame(payload.GameID)
+		if err != nil {
+			log.Printf("game not found: %v", err)
+			continue
+		}
+
+		client := clients[conn]
+
+		err = g.ResolveAction(
+			client.PlayerID,
+			payload.Resolution,
+			payload.PenaltyCount,
+		)
+
+		if err != nil {
+			log.Printf("cannot resolve action: %v", err)
+			continue
+		}
+
+		broadcastGameState(payload.GameID, g)
+
+		case "ADMIN_PENALIZE":
+		var payload AdminPenaltyMessage
+		if err := json.Unmarshal(messageBytes, &payload); err != nil {
+			log.Printf("invalid ADMIN_PENALIZE payload: %v", err)
+			continue
+		}
+
+		g, err := game.GetGame(payload.GameID)
+		if err != nil {
+			log.Printf("game not found: %v", err)
+			continue
+		}
+
+		client := clients[conn]
+		if client.PlayerID != g.AdminID {
+			continue
+		}
+		g.ApplyPenalty(payload.TargetPlayerID, payload.PenaltyCount)
+		broadcastGameState(payload.GameID, g)
 
 		default:
 			log.Printf("unknown message type: %s", msg.Type)
@@ -358,6 +421,14 @@ func toPlayerGameState(g *game.Game, playerID string) PlayerGameState {
 	players := make([]string, 0, len(g.Players))
 	var hand []CardDTO
 	var actionDTO *ActionDTO
+	var topCard *CardDTO
+	
+	if g.TopCard != nil {
+		topCard = &CardDTO{
+			Rank: g.TopCard.Rank,
+			Suit: g.TopCard.Suit,
+		}
+	}
 
 	if g.CurrentAction != nil {
 		actionDTO = &ActionDTO{
@@ -403,6 +474,7 @@ func toPlayerGameState(g *game.Game, playerID string) PlayerGameState {
 		Hand:     hand,
 		PlayerID: playerID,
 		CurrentAction: actionDTO,
+		TopCard: topCard,
 	}
 
 }
