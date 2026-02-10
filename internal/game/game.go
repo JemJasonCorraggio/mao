@@ -18,12 +18,14 @@ const (
 var games = make(map[string]*Game)
 
 type Game struct {
-	ID            string
-	Status        GameStatus
-	Players       []*Player
-	AdminID       string
-	CurrentAction *Action
-	TopCard   	  *Card
+	ID            		string
+	Status        		GameStatus
+	Players       		[]*Player
+	AdminID       		string
+	CurrentAction 		*Action
+	TopCard   	  		*Card
+	WinnerID             string
+	LastSuccessfulAction *Action
 }
 
 const gameCodeLength = 4
@@ -200,6 +202,7 @@ func (g *Game) ResolveAction(
 		if err := g.acceptAction(g.CurrentAction.PlayerID); err != nil {
 			return err
 		}
+		g.LastSuccessfulAction = g.CurrentAction
 		for playerID := range g.CurrentAction.ChallengedBy {
 			if err := g.ApplyPenalty(playerID, 1); err != nil {
 				return err
@@ -209,6 +212,7 @@ func (g *Game) ResolveAction(
 		if err := g.acceptAction(g.CurrentAction.PlayerID); err != nil {
 			return err
 		}
+		g.LastSuccessfulAction = g.CurrentAction
 		if err := g.ApplyPenalty(g.CurrentAction.PlayerID, penaltyCount); err != nil {
 			return err
 		}
@@ -234,7 +238,8 @@ func (g *Game) checkForWin() {
 	for _, p := range g.Players {
 		if len(p.Hand) == 0 {
 			g.Status = GameEnded
-			// later: emit GameWon event
+			g.WinnerID = p.ID
+			return
 		}
 	}
 }

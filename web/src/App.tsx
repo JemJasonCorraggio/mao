@@ -79,8 +79,20 @@ function GameView({ game, send }: { game: any; send: (msg: any) => void }) {
     <div>
       <h2>Game {game.id}</h2>
 
-      {isEnded && (
-        <h2 style={{ color: "green" }}>Game Over</h2>
+      {isEnded && game.winnerId && (
+        <div
+          style={{
+            border: "2px solid green",
+            padding: 12,
+            marginBottom: 16,
+            background: "#f0fff0",
+          }}
+        >
+          <h2 style={{ color: "green", margin: 0 }}>🎉 Game Over</h2>
+          <div style={{ fontSize: "1.2em", marginTop: 8 }}>
+            Winner: <strong>{game.winnerId}</strong>
+          </div>
+        </div>
       )}
 
       {isAdmin && canStart && (
@@ -99,7 +111,16 @@ function GameView({ game, send }: { game: any; send: (msg: any) => void }) {
       <h3>Players</h3>
       <ul>
         {(game.players ?? []).map((p: string) => (
-          <li key={p}>{p}</li>
+          <li
+            key={p}
+            style={{
+              fontWeight: p === game.winnerId ? "bold" : "normal",
+              color: p === game.winnerId ? "green" : "inherit",
+            }}
+          >
+            {p}
+            {p === game.winnerId && " 🏆"}
+          </li>
         ))}
       </ul>
 
@@ -126,7 +147,28 @@ function GameView({ game, send }: { game: any; send: (msg: any) => void }) {
         </div>
       )}
 
-      {action && (
+      {game.lastAction && (
+        <div
+          style={{
+            border: "1px solid #999",
+            padding: 8,
+            marginBottom: 12,
+          }}
+        >
+          <strong>Last Successful Action</strong>
+
+          <div>Player: {game.lastAction.playerId}</div>
+          <div>Type: {game.lastAction.type}</div>
+
+          {game.lastAction.card && (
+            <div>
+              Card: {game.lastAction.card.rank} of {game.lastAction.card.suit}
+            </div>
+          )}
+        </div>
+      )}
+
+      {isActive && action && (
         <div style={{ border: "1px solid red", padding: 8, marginBottom: 12 }}>
           <strong>Pending Action</strong>
 
@@ -235,7 +277,7 @@ function GameView({ game, send }: { game: any; send: (msg: any) => void }) {
         </div> 
       )}
 
-      {action && !isAdmin && (
+      {isActive && action && !isAdmin && (
         <div style={{ fontStyle: "italic", marginTop: 8 }}>
           Waiting for admin to resolve…
         </div>

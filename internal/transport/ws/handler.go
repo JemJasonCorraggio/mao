@@ -45,6 +45,8 @@ type PlayerGameState struct {
   PlayerID  	string    `json:"playerId"`
   CurrentAction *ActionDTO `json:"currentAction,omitempty"`
   TopCard    	*CardDTO   `json:"topCard,omitempty"`
+  LastAction 	*ActionDTO `json:"lastAction,omitempty"`
+  WinnerID      string     `json:"winnerId,omitempty"`
 }
 
 type CardDTO struct {
@@ -421,6 +423,7 @@ func toPlayerGameState(g *game.Game, playerID string) PlayerGameState {
 	players := make([]string, 0, len(g.Players))
 	var hand []CardDTO
 	var actionDTO *ActionDTO
+	var lastActionDTO *ActionDTO
 	var topCard *CardDTO
 	
 	if g.TopCard != nil {
@@ -453,6 +456,29 @@ func toPlayerGameState(g *game.Game, playerID string) PlayerGameState {
 		}
 	}
 
+	if g.LastSuccessfulAction != nil {
+		lastActionDTO = &ActionDTO{
+			ID:        g.LastSuccessfulAction.ID,
+			PlayerID: g.LastSuccessfulAction.PlayerID,
+			Type:     string(g.LastSuccessfulAction.Type),
+		}
+
+		for pid := range g.LastSuccessfulAction.ChallengedBy {
+			lastActionDTO.ChallengedBy = append(lastActionDTO.ChallengedBy, pid)
+		}
+
+		for pid := range g.LastSuccessfulAction.AcceptedBy {
+			lastActionDTO.AcceptedBy = append(lastActionDTO.AcceptedBy, pid)
+		}
+
+		if g.LastSuccessfulAction.Card != nil {
+			lastActionDTO.Card = &CardDTO{
+				Rank: g.LastSuccessfulAction.Card.Rank,
+				Suit: g.LastSuccessfulAction.Card.Suit,
+			}
+		}
+	}
+
 	for _, p := range g.Players {
 		players = append(players, p.ID)
 
@@ -475,6 +501,8 @@ func toPlayerGameState(g *game.Game, playerID string) PlayerGameState {
 		PlayerID: playerID,
 		CurrentAction: actionDTO,
 		TopCard: topCard,
+		LastAction: lastActionDTO,
+		WinnerID: g.WinnerID,
 	}
 
 }
