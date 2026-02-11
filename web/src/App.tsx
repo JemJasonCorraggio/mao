@@ -1,6 +1,34 @@
 import { useState } from "react";
 import { useGameSocket } from "./useGameSocket";
 
+const formatPendingDescription = (action: any) => {
+  if (!action) return null;
+
+  if (action.type === "PROPOSE_PLAY" || action.type === "PLAY_CARD") {
+    if (action.card) {
+      return (
+        <>
+          {action.playerId} proposed to play <strong>{action.card.rank} of {action.card.suit}</strong> 🎴
+        </>
+      );
+    }
+  }
+
+  if (action.type === "PROPOSE_DRAW" || action.type === "DRAW_CARD") {
+    return (
+      <>
+        {action.playerId} requested a <strong>draw</strong> 🃏
+      </>
+    );
+  }
+
+  return (
+    <>
+      {action.playerId} — {action.type}
+    </>
+  );
+};
+
 function App() {
   const { connect, send, gameState, connected } = useGameSocket();
   const [gameId, setGameId] = useState("");
@@ -178,52 +206,18 @@ function GameView({ game, send }: { game: any; send: (msg: any) => void }) {
         </div>
       )}
 
-      {game.lastAction && (
-        <div
-          style={{
-            border: "1px solid #999",
-            padding: 8,
-            marginBottom: 12,
-          }}
-        >
-          <strong>Last Successful Action</strong>
-
-          <div>Player: {game.lastAction.playerId}</div>
-          <div>Type: {game.lastAction.type}</div>
-
-          {game.lastAction.card && (
-            <div>
-              Card: {game.lastAction.card.rank} of {game.lastAction.card.suit}
-            </div>
-          )}
-        </div>
-      )}
-
       {isActive && action && (
-        <div style={{ border: "1px solid red", padding: 8, marginBottom: 12 }}>
-          <strong>Pending Action</strong>
+        <div style={{ border: "1px solid #e53935", padding: 12, marginBottom: 12, borderRadius: 6 }}>
+          <div style={{ fontSize: "1em", marginBottom: 8 }}><strong>Pending Action</strong></div>
 
-          <div>Player: {action.playerId}</div>
-          <div>Type: {action.type}</div>
+          <div style={{ marginBottom: 8 }}>{formatPendingDescription(action)}</div>
 
-          {action.card && (
-            <div>
-              Card: {action.card.rank} of {action.card.suit}
-            </div>
-          )}
-
-          <div>
-            <strong>Challenges:</strong>{" "}
-            {challengedBy.length > 0
-              ? challengedBy.join(", ")
-              : "None"}
+          <div style={{ marginBottom: 6, color: "#333" }}>
+            <strong>Challenges</strong>: {challengedBy.length > 0 ? challengedBy.join(", ") : "None"} {challengedBy.length > 0 ? "⚠️" : ""}
           </div>
 
-          <div>
-            <strong>Accepts:</strong>{" "}
-            {acceptedBy.length > 0
-              ? acceptedBy.join(", ")
-              : "None"}
+          <div style={{ marginBottom: 8, color: "#333" }}>
+            <strong>Accepts</strong>: {acceptedBy.length > 0 ? acceptedBy.join(", ") : "None"} {acceptedBy.length > 0 ? "✅" : ""}
           </div>
 
           {canReact && (
@@ -305,7 +299,7 @@ function GameView({ game, send }: { game: any; send: (msg: any) => void }) {
               You have already responded
             </div>
           )}
-        </div> 
+        </div>
       )}
 
       {isActive && action && !isAdmin && (
@@ -315,9 +309,11 @@ function GameView({ game, send }: { game: any; send: (msg: any) => void }) {
       )}
 
       {game.topCard && (
-        <div>
-          <strong>Top Card:</strong>{" "}
-          {game.topCard.rank} of {game.topCard.suit}
+        <div style={{ marginTop: 12 }}>
+          <div style={{ display: "inline-block", border: "2px solid #333", borderRadius: 8, padding: 12, boxShadow: "0 2px 6px rgba(0,0,0,0.08)" }}>
+            <div style={{ fontSize: "0.9em", color: "#666", marginBottom: 6 }}>Top Card 🎴</div>
+            <div style={{ fontSize: "1.2em", fontWeight: 600 }}>{game.topCard.rank} of {game.topCard.suit}</div>
+          </div>
         </div>
       )}
 
