@@ -6,7 +6,7 @@ export function useGameSocket() {
   const [connected, setConnected] = useState(false);
 
   function connect() {
-    const ws = new WebSocket("wss://expert-winner-wv9wxgr56xjhgqgw-8080.app.github.dev/ws");
+    const ws = new WebSocket("wss://mao.fly.dev/ws");
     socketRef.current = ws;
 
     ws.onopen = () => setConnected(true);
