@@ -11,6 +11,12 @@ const formatPendingDescription = (action: any) => {
           {action.playerId} proposed to play <strong>{action.card.rank} of {action.card.suit}</strong> 🎴
         </>
       );
+    } else{
+      return (
+        <>
+          {action.playerId} proposed to draw a card 🃏
+        </>
+      );
     }
   }
 
@@ -28,6 +34,48 @@ const formatPendingDescription = (action: any) => {
     </>
   );
 };
+
+const suitSymbol = (s: string) => {
+  const sLower = (s || "").toLowerCase();
+  if (sLower.includes("heart")) return "♥";
+  if (sLower.includes("diamond")) return "♦";
+  if (sLower.includes("club")) return "♣";
+  if (sLower.includes("spade")) return "♠";
+  return s;
+};
+
+function CardView({ card, onClick, small }: { card: any; onClick?: () => void; small?: boolean }) {
+  const width = small ? 88 : 140;
+  const height = small ? 120 : 180;
+  const fontSize = small ? "0.9em" : "1.1em";
+
+  return (
+    <button
+      onClick={onClick}
+      disabled={!onClick}
+      style={{
+        width,
+        height,
+        borderRadius: 8,
+        border: "1px solid #333",
+        background: "#fff",
+        color: "#000",
+        padding: 8,
+        margin: 6,
+        display: "inline-flex",
+        flexDirection: "column",
+        justifyContent: "space-between",
+        alignItems: "center",
+        boxShadow: "0 4px 10px rgba(0,0,0,0.08)",
+        cursor: onClick ? "pointer" : "default",
+      }}
+    >
+      <div style={{ alignSelf: "flex-start", fontSize }}>{card.rank}</div>
+      <div style={{ fontSize: small ? "1.2em" : "1.6em" }}>{suitSymbol(card.suit)}</div>
+      <div style={{ alignSelf: "flex-end", fontSize }}>{card.rank}</div>
+    </button>
+  );
+}
 
 function App() {
   const { connect, send, gameState, connected } = useGameSocket();
@@ -310,10 +358,8 @@ function GameView({ game, send }: { game: any; send: (msg: any) => void }) {
 
       {game.topCard && (
         <div style={{ marginTop: 12 }}>
-          <div style={{ display: "inline-block", border: "2px solid #333", borderRadius: 8, padding: 12, boxShadow: "0 2px 6px rgba(0,0,0,0.08)" }}>
-            <div style={{ fontSize: "0.9em", color: "#666", marginBottom: 6 }}>Top Card 🎴</div>
-            <div style={{ fontSize: "1.2em", fontWeight: 600 }}>{game.topCard.rank} of {game.topCard.suit}</div>
-          </div>
+          <div style={{ marginBottom: 8, color: "#fff" }}><strong>Top Card 🎴</strong></div>
+          <CardView card={game.topCard} />
         </div>
       )}
 
@@ -332,27 +378,25 @@ function GameView({ game, send }: { game: any; send: (msg: any) => void }) {
       </button>
 
       <h3>Your Hand</h3>
-      <ul>
+      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center" }}>
         {(game.hand ?? []).map((c: any, i: number) => (
-          <li key={i}>
-            <button
-              disabled={!!game.currentAction}
-              onClick={() =>
-                send({
-                  type: "PROPOSE_PLAY",
-                  gameId: game.id,
-                  card: {
-                    rank: c.rank,
-                    suit: c.suit,
-                  },
-                })
-              }
-            >
-              Play {c.rank} of {c.suit}
-            </button>
-          </li>
+          <CardView
+            key={i}
+            small
+            card={c}
+            onClick={() =>
+              send({
+                type: "PROPOSE_PLAY",
+                gameId: game.id,
+                card: {
+                  rank: c.rank,
+                  suit: c.suit,
+                },
+              })
+            }
+          />
         ))}
-      </ul>
+      </div>
     </div>)}
     </div>
   );
