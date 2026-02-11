@@ -108,21 +108,52 @@ function GameView({ game, send }: { game: any; send: (msg: any) => void }) {
         </button>
       )}
 
-      <h3>Players</h3>
-      <ul>
-        {(game.players ?? []).map((p: string) => (
-          <li
-            key={p}
-            style={{
-              fontWeight: p === game.winnerId ? "bold" : "normal",
-              color: p === game.winnerId ? "green" : "inherit",
-            }}
-          >
-            {p}
-            {p === game.winnerId && " 🏆"}
-          </li>
-        ))}
-      </ul>
+      <h3>Seating Order</h3>
+        <div style={{ marginBottom: 12, fontStyle: "italic" }}>
+          {game.lastAction ? (
+            <>
+              {game.lastAction.playerId}{" "}
+              {game.lastAction.type === "PLAY_CARD"
+                ? "played a card 🎴"
+                : "drew a card 🃏"}
+            </>
+          ) : isActive ? (
+            <>Dealer dealt the cards 🎩</>
+          ) : (
+            <>Waiting to start…</>
+          )}
+        </div>
+
+        <ol style={{ paddingLeft: 20 }}>
+          {(game.players ?? []).map((p: string, index: number) => {
+            const isDealer = p === game.adminId;
+            const isWinner = p === game.winnerId;
+            const isLastActor = p === game.lastAction?.playerId;
+            const isYou = p === game.playerId;
+
+            return (
+              <li
+                key={p}
+                style={{
+                  marginBottom: 6,
+                  fontWeight: isWinner ? "bold" : "normal",
+                  color: isWinner ? "green" : "inherit",
+                  background: isLastActor ? "#fffbe6" : "transparent",
+                  padding: 4,
+                  borderRadius: 4,
+                }}
+              >
+                {isLastActor && <span style={{ marginRight: 6 }}>➤</span>}
+
+                {p}
+
+                {isYou && " (You 👤)"}
+                {isDealer && " 🎩 Dealer"}
+                {isWinner && " 🏆"}
+              </li>
+            );
+          })}
+        </ol>
 
       {isAdmin && isActive && (
         <div style={{ marginTop: 16 }}>
