@@ -1,13 +1,13 @@
 FROM golang:1.25-alpine
 
-WORKDIR /mao
+WORKDIR /app
 
 COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
 
-RUN go build -o mao
+RUN go build -o mao ./cmd/server
 
 EXPOSE 8080
 
