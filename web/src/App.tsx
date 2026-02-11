@@ -4,26 +4,20 @@ import { useGameSocket } from "./useGameSocket";
 const formatPendingDescription = (action: any) => {
   if (!action) return null;
 
-  if (action.type === "PROPOSE_PLAY" || action.type === "PLAY_CARD") {
+  if (action.type === "PLAY_CARD") {
     if (action.card) {
       return (
         <>
           {action.playerId} proposed to play <strong>{action.card.rank} of {action.card.suit}</strong> 🎴
         </>
       );
-    } else{
-      return (
-        <>
-          {action.playerId} proposed to draw a card 🃏
-        </>
-      );
     }
   }
 
-  if (action.type === "PROPOSE_DRAW" || action.type === "DRAW_CARD") {
+  if (action.type === "DRAW") {
     return (
       <>
-        {action.playerId} requested a <strong>draw</strong> 🃏
+        {action.playerId} requested to <strong>draw</strong> a card 🃏
       </>
     );
   }
