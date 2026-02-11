@@ -44,10 +44,18 @@ const suitSymbol = (s: string) => {
   return s;
 };
 
+const suitColor = (s: string) => {
+  const sLower = (s || "").toLowerCase();
+  if (sLower.includes("heart") || sLower.includes("diamond")) return "red";
+  return "#000";
+};
+
 function CardView({ card, onClick, small }: { card: any; onClick?: () => void; small?: boolean }) {
   const width = small ? 88 : 140;
   const height = small ? 120 : 180;
   const fontSize = small ? "0.9em" : "1.1em";
+
+  const color = suitColor(card?.suit);
 
   return (
     <button
@@ -59,7 +67,7 @@ function CardView({ card, onClick, small }: { card: any; onClick?: () => void; s
         borderRadius: 8,
         border: "1px solid #333",
         background: "#fff",
-        color: "#000",
+        color,
         padding: 8,
         margin: 6,
         display: "inline-flex",
