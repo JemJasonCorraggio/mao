@@ -138,7 +138,7 @@ function GameView({ game, send }: { game: any; send: (msg: any) => void }) {
                   marginBottom: 6,
                   fontWeight: isWinner ? "bold" : "normal",
                   color: isWinner ? "green" : "inherit",
-                  background: isLastActor ? "#fffbe6" : "transparent",
+                  background: isLastActor ? "#008000" : "transparent",
                   padding: 4,
                   borderRadius: 4,
                 }}
