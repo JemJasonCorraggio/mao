@@ -26,7 +26,7 @@ type Action struct {
 
 	Resolved      bool
 	Resolution    ActionResolution
-	ResolvedBy    string // admin ID
+	ResolvedBy    string 
 }
 
 

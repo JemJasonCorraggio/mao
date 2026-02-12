@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useGameSocket } from "./useGameSocket";
+import type { PlayerGameState, CardDTO, ActionDTO, OutgoingMessage } from "./types";
 
-const formatPendingDescription = (action: any) => {
+const formatPendingDescription = (action?: ActionDTO | null) => {
   if (!action) return null;
 
   if (action.type === "PLAY_CARD") {
@@ -44,7 +45,7 @@ const suitColor = (s: string) => {
   return "#000";
 };
 
-function CardView({ card, onClick, small }: { card: any; onClick?: () => void; small?: boolean }) {
+function CardView({ card, onClick, small }: { card: CardDTO; onClick?: () => void; small?: boolean }) {
   const width = small ? 88 : 140;
   const height = small ? 120 : 180;
   const fontSize = small ? "0.9em" : "1.1em";
@@ -132,7 +133,7 @@ function App() {
   );
 }
 
-function GameView({ game, send }: { game: any; send: (msg: any) => void }) {
+function GameView({ game, send }: { game: PlayerGameState; send: (msg: OutgoingMessage) => void }) {
   const isAdmin = game.playerId === game.adminId;
   const canStart = game.status === "WAITING";
   const isActive = game.status === "ACTIVE";
@@ -148,7 +149,6 @@ function GameView({ game, send }: { game: any; send: (msg: any) => void }) {
 
   const canReact =
     !!action &&
-    !action.resolution &&
     !isMyAction &&
     !hasAccepted &&
     !hasChallenged;
@@ -381,7 +381,7 @@ function GameView({ game, send }: { game: any; send: (msg: any) => void }) {
 
       <h3>Your Hand</h3>
       <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center" }}>
-        {(game.hand ?? []).map((c: any, i: number) => (
+        {(game.hand ?? []).map((c: CardDTO, i: number) => (
           <CardView
             key={i}
             small

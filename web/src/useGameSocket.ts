@@ -1,13 +1,19 @@
 import { useEffect, useRef, useState } from "react";
+import type { PlayerGameState, OutgoingMessage, ServerMessage } from "./types";
 
-export function useGameSocket() {
+export function useGameSocket(): {
+  connect: () => void;
+  send: (message: OutgoingMessage) => void;
+  gameState: PlayerGameState | null;
+  connected: boolean;
+} {
   const socketRef = useRef<WebSocket | null>(null);
-  const [gameState, setGameState] = useState<any>(null);
+  const [gameState, setGameState] = useState<PlayerGameState | null>(null);
   const [connected, setConnected] = useState(false);
 
   const reconnectAttempt = useRef(0);
   const shouldReconnect = useRef(true);
-  const pendingSends = useRef<any[]>([]);
+  const pendingSends = useRef<OutgoingMessage[]>([]);
   const pingInterval = useRef<number | null>(null);
 
   const WS_URL = "wss://mao.fly.dev/ws";
@@ -15,7 +21,7 @@ export function useGameSocket() {
   function flushQueue() {
     while (pendingSends.current.length > 0 && socketRef.current?.readyState === WebSocket.OPEN) {
       const m = pendingSends.current.shift();
-      socketRef.current?.send(JSON.stringify(m));
+      if (m) socketRef.current?.send(JSON.stringify(m));
     }
   }
 
@@ -73,10 +79,10 @@ export function useGameSocket() {
 
     ws.onmessage = (event) => {
       try {
-        const msg = JSON.parse(event.data);
-        if (msg.type === "GAME_STATE") {
-          setGameState(msg.payload);
-        }
+          const msg = JSON.parse(event.data) as ServerMessage;
+          if (msg.type === "GAME_STATE" && msg.payload) {
+            setGameState(msg.payload as PlayerGameState);
+          }
       } catch (e) {
       }
     };
@@ -94,7 +100,7 @@ export function useGameSocket() {
     };
   }
 
-  function send(message: any) {
+  function send(message: OutgoingMessage) {
     try {
       if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
         socketRef.current.send(JSON.stringify(message));
