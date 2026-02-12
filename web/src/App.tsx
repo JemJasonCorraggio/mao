@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useGameSocket } from "./useGameSocket";
-import type { PlayerGameState, CardDTO, ActionDTO, OutgoingMessage } from "./types";
+import type { PlayerGameState, CardDTO, ActionDTO, OutgoingMessage, Event } from "./types";
 
 const formatPendingDescription = (action?: ActionDTO | null) => {
   if (!action) return null;
@@ -77,6 +77,45 @@ function CardView({ card, onClick, small }: { card: CardDTO; onClick?: () => voi
       <div style={{ fontSize: small ? "1.2em" : "1.6em" }}>{suitSymbol(card.suit)}</div>
       <div style={{ alignSelf: "flex-end", fontSize }}>{card.rank}</div>
     </button>
+  );
+}
+
+function RecentEventsFeed({ events }: { events?: Event[] }) {
+  if (!events || events.length === 0) return null;
+
+  return (
+    <div style={{ border: "1px solid #ddd", padding: 12, borderRadius: 6, marginTop: 12 }}>
+      <strong>Recent Events</strong>
+      <ul style={{ marginTop: 8, paddingLeft: 20, margin: "8px 0 0 0" }}>
+        {events.slice().reverse().map((e, i) => (
+          <li key={i} style={{ marginBottom: 8, fontSize: "0.95em" }}>
+            {e.type === "PENALTY" && (
+              <span style={{ color: "#b00020" }}>
+                ⚠️ Penalty: <strong>{e.playerId}</strong> +{e.penalty}
+              </span>
+            )}
+            {e.type === "ACTION" && e.actionType === "PLAY_CARD" && e.card && (
+              <span>
+                🎴 <strong>{e.playerId}</strong> proposed play: {e.card.rank} of {e.card.suit}
+              </span>
+            )}
+            {e.type === "ACTION" && e.actionType === "DRAW" && (
+              <span>
+                🃏 <strong>{e.playerId}</strong> requested draw
+              </span>
+            )}
+            {e.type === "ACTION" && e.actionType === "START_GAME" && (
+              <span>🎩 Game started</span>
+            )}
+            {e.timestamp && (
+              <span style={{ marginLeft: 8, fontSize: "0.9em" }}>
+                {new Date(e.timestamp * 1000).toLocaleTimeString()}
+              </span>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
@@ -222,7 +261,7 @@ function GameView({ game, send }: { game: PlayerGameState; send: (msg: OutgoingM
                 >
                   {isLastActor && <span style={{ marginRight: 6 }}>➤</span>}
 
-                  {p.id} <span style={{ marginLeft: 8, color: "#666" }}>({p.handCount})</span>
+                  {p.id} <span style={{ marginLeft: 8}}>({p.handCount})</span>
 
                   {isYou && " (You 👤)"}
                   {isDealer && " 🎩 Dealer"}
@@ -231,6 +270,8 @@ function GameView({ game, send }: { game: PlayerGameState; send: (msg: OutgoingM
               );
             })}
         </ol>
+
+      <RecentEventsFeed events={game.recentEvents} />
 
       {isAdmin && isActive && (
         <div style={{ marginTop: 16 }}>

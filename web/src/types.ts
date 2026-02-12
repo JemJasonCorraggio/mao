@@ -32,11 +32,22 @@ export interface PlayerGameState {
 	topCard?: CardDTO | null;
 	lastAction?: ActionDTO | null;
 	winnerId?: string | null;
+	recentEvents?: Event[];
 }
 
 export interface PlayerInfo {
 	id: string;
 	handCount: number;
+}
+
+export interface Event {
+	type: "ACTION" | "PENALTY";
+	playerId?: string;
+	actionId?: string;
+	actionType?: string;
+	card?: CardDTO | null;
+	penalty?: number;
+	timestamp?: number;
 }
 
 export type OutgoingMessage =

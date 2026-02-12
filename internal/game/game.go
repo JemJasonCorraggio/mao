@@ -15,6 +15,23 @@ const (
 	GameEnded   GameStatus = "ENDED"
 )
 
+type EventType string
+
+const (
+	EventAction  EventType = "ACTION"
+	EventPenalty EventType = "PENALTY"
+)
+
+type Event struct {
+	Type   	   EventType
+	PlayerID   string
+	ActionID   string
+	ActionType string
+	Card   	   *Card
+	Penalty    int
+	Timestamp  int64
+}
+
 var games = make(map[string]*Game)
 
 type Game struct {
@@ -26,6 +43,7 @@ type Game struct {
 	TopCard   	  		*Card
 	WinnerID             string
 	LastSuccessfulAction *Action
+	RecentEvents  		[]Event
 }
 
 const gameCodeLength = 4
@@ -114,6 +132,12 @@ func (g *Game) StartGame(adminID string) error {
 	g.dealInitialHands()
 	// - emit/broadcast game state
 
+	g.pushEvent(Event{
+		Type:      EventAction,
+		ActionType: "START_GAME",
+		Timestamp: time.Now().Unix(),
+	})
+
 	return nil
 }
 
@@ -140,6 +164,13 @@ func (g *Game) ProposeAction(a *Action) error {
 
 func (g *Game) ClearAction() {
 	g.CurrentAction = nil
+}
+
+func (g *Game) pushEvent(e Event) {
+	g.RecentEvents = append(g.RecentEvents, e)
+	if len(g.RecentEvents) > 10 {
+		g.RecentEvents = g.RecentEvents[len(g.RecentEvents)-10:]
+	}
 }
 
 func (g *Game) AcceptAction(playerID string) error {
@@ -269,6 +300,14 @@ func (g *Game) acceptAction(playerID string) error {
 	default:
 		return errors.New("unsupported action type")
 	}
+	g.pushEvent(Event{
+		Type:      EventAction,
+		PlayerID:  g.CurrentAction.PlayerID,
+		ActionID:  g.CurrentAction.ID,
+		ActionType: string(g.CurrentAction.Type),
+		Card:      g.CurrentAction.Card,
+		Timestamp: time.Now().Unix(),
+	})
 	return nil
 }
 
@@ -281,6 +320,12 @@ func (g *Game) ApplyPenalty(playerID string, count int) error {
 	for i := 0; i < count; i++ {
 		p.Hand = append(p.Hand, NewRandomCard())
 	}
+	g.pushEvent(Event{
+		Type:      EventPenalty,
+		PlayerID:  playerID,
+		Penalty:   count,
+		Timestamp: time.Now().Unix(),
+	})
 	return nil
 }
 

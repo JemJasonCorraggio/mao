@@ -47,6 +47,7 @@ type PlayerGameState struct {
   TopCard    	*CardDTO   `json:"topCard,omitempty"`
   LastAction 	*ActionDTO `json:"lastAction,omitempty"`
   WinnerID      string     `json:"winnerId,omitempty"`
+  RecentEvents  []EventDTO `json:"recentEvents,omitempty"`
 }
 
 type PlayerInfo struct {
@@ -66,6 +67,16 @@ type ActionDTO struct {
 	Card      		*CardDTO `json:"card,omitempty"`
 	ChallengedBy 	[]string `json:"challengedBy"`
 	AcceptedBy   	[]string `json:"acceptedBy"`
+}
+
+type EventDTO struct {
+	Type       string   `json:"type"`
+	PlayerID   string   `json:"playerId,omitempty"`
+	ActionID   string   `json:"actionId,omitempty"`
+	ActionType string   `json:"actionType,omitempty"`
+	Card       *CardDTO `json:"card,omitempty"`
+	Penalty    int      `json:"penalty,omitempty"`
+	Timestamp  int64    `json:"timestamp,omitempty"`
 }
 
 type ProposePlayCardMessage struct {
@@ -497,6 +508,25 @@ func toPlayerGameState(g *game.Game, playerID string) PlayerGameState {
 		}
 	}
 
+	var recentEvents []EventDTO
+	for _, e := range g.RecentEvents {
+		eventDTO := EventDTO{
+			Type:       string(e.Type),
+			PlayerID:   e.PlayerID,
+			ActionID:   e.ActionID,
+			ActionType: e.ActionType,
+			Penalty:    e.Penalty,
+			Timestamp:  e.Timestamp,
+		}
+		if e.Card != nil {
+			eventDTO.Card = &CardDTO{
+				Rank: e.Card.Rank,
+				Suit: e.Card.Suit,
+			}
+		}
+		recentEvents = append(recentEvents, eventDTO)
+	}
+
 	return PlayerGameState{
 		ID:       g.ID,
 		Status:   string(g.Status),
@@ -508,6 +538,7 @@ func toPlayerGameState(g *game.Game, playerID string) PlayerGameState {
 		TopCard: topCard,
 		LastAction: lastActionDTO,
 		WinnerID: g.WinnerID,
+		RecentEvents: recentEvents,
 	}
 
 }
