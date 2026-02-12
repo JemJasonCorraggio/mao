@@ -25,13 +25,18 @@ export interface PlayerGameState {
 	id: string;
 	status: GameStatus;
 	adminId: string;
-	players: string[];
+	players: PlayerInfo[];
 	hand: CardDTO[];
 	playerId: string;
 	currentAction?: ActionDTO | null;
 	topCard?: CardDTO | null;
 	lastAction?: ActionDTO | null;
 	winnerId?: string | null;
+}
+
+export interface PlayerInfo {
+	id: string;
+	handCount: number;
 }
 
 export type OutgoingMessage =

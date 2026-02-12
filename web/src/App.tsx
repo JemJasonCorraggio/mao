@@ -192,8 +192,8 @@ function GameView({ game, send }: { game: PlayerGameState; send: (msg: OutgoingM
             <>
               {game.lastAction.playerId}{" "}
               {game.lastAction.type === "PLAY_CARD"
-                ? "played a card 🎴"
-                : "drew a card 🃏"}
+                ? " played a card 🎴"
+                : " drew a card 🃏"}
             </>
           ) : isActive ? (
             <>Dealer dealt the cards 🎩</>
@@ -203,54 +203,53 @@ function GameView({ game, send }: { game: PlayerGameState; send: (msg: OutgoingM
         </div>
 
         <ol style={{ paddingLeft: 20 }}>
-          {(game.players ?? []).map((p: string, index: number) => {
-            const isDealer = p === game.adminId;
-            const isWinner = p === game.winnerId;
-            const isLastActor = p === game.lastAction?.playerId;
-            const isYou = p === game.playerId;
+          {(game.players ?? []).map((p, index) => {
+              const isDealer = p.id === game.adminId;
+              const isWinner = p.id === game.winnerId;
+              const isLastActor = p.id === game.lastAction?.playerId;
+              const isYou = p.id === game.playerId;
 
-            return (
-              <li
-                key={p}
-                style={{
-                  marginBottom: 6,
-                  fontWeight: isWinner ? "bold" : "normal",
-                  color: isWinner ? "green" : "inherit",
-                  background: isLastActor ? "#008000" : "transparent",
-                  padding: 4,
-                  borderRadius: 4,
-                }}
-              >
-                {isLastActor && <span style={{ marginRight: 6 }}>➤</span>}
+              return (
+                <li
+                  key={p.id}
+                  style={{
+                    marginBottom: 6,
+                    fontWeight: isWinner ? "bold" : "normal",
+                    background: isLastActor ? "#008000" : "transparent",
+                    padding: 4,
+                    borderRadius: 4,
+                  }}
+                >
+                  {isLastActor && <span style={{ marginRight: 6 }}>➤</span>}
 
-                {p}
+                  {p.id} <span style={{ marginLeft: 8, color: "#666" }}>({p.handCount})</span>
 
-                {isYou && " (You 👤)"}
-                {isDealer && " 🎩 Dealer"}
-                {isWinner && " 🏆"}
-              </li>
-            );
-          })}
+                  {isYou && " (You 👤)"}
+                  {isDealer && " 🎩 Dealer"}
+                  {isWinner && " 🏆"}
+                </li>
+              );
+            })}
         </ol>
 
       {isAdmin && isActive && (
         <div style={{ marginTop: 16 }}>
           <h3>Admin Penalties</h3>
 
-          {(game.players ?? []).map((p: string) => (
+          {(game.players ?? []).map((p) => (
             <button
-              key={p}
+              key={p.id}
               style={{ marginRight: 8, marginBottom: 4 }}
               onClick={() =>
                 send({
                   type: "ADMIN_PENALIZE",
                   gameId: game.id,
-                  targetPlayerId: p,
+                  targetPlayerId: p.id,
                   penaltyCount: 1,
                 })
               }
             >
-              Penalize {p}
+              Penalize {p.id}
             </button>
           ))}
         </div>
@@ -261,6 +260,12 @@ function GameView({ game, send }: { game: PlayerGameState; send: (msg: OutgoingM
           <div style={{ fontSize: "1em", marginBottom: 8 }}><strong>Pending Action</strong></div>
 
           <div style={{ marginBottom: 8 }}>{formatPendingDescription(action)}</div>
+
+          {action.type === "PLAY_CARD" && action.card && (
+            <div style={{ marginTop: 8 }}>
+              <CardView card={action.card} small />
+            </div>
+          )}
 
           <div style={{ marginBottom: 6, color: "#333" }}>
             <strong>Challenges</strong>: {challengedBy.length > 0 ? challengedBy.join(", ") : "None"} {challengedBy.length > 0 ? "⚠️" : ""}
