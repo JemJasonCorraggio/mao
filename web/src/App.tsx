@@ -96,12 +96,12 @@ function RecentEventsFeed({ events }: { events?: Event[] }) {
             )}
             {e.type === "ACTION" && e.actionType === "PLAY_CARD" && e.card && (
               <span>
-                🎴 <strong>{e.playerId}</strong> proposed play: {e.card.rank} of {e.card.suit}
+                🎴 <strong>{e.playerId}</strong> played {e.card.rank} of {e.card.suit}
               </span>
             )}
             {e.type === "ACTION" && e.actionType === "DRAW" && (
               <span>
-                🃏 <strong>{e.playerId}</strong> requested draw
+                🃏 <strong>{e.playerId}</strong> drew a card
               </span>
             )}
             {e.type === "ACTION" && e.actionType === "START_GAME" && (
@@ -202,7 +202,6 @@ function GameView({ game, send }: { game: PlayerGameState; send: (msg: OutgoingM
             border: "2px solid green",
             padding: 12,
             marginBottom: 16,
-            background: "#f0fff0",
           }}
         >
           <h2 style={{ color: "green", margin: 0 }}>🎉 Game Over</h2>
