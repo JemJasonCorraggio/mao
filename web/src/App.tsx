@@ -125,7 +125,7 @@ function App() {
   const [name, setName] = useState("");
 
   return (
-    <div>
+    <div style={{ padding: "20px" }}>
       <h1>Mao</h1>
 
       {!connected && (
