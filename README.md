@@ -199,6 +199,7 @@ Possible extensions include:
 - Enhanced UI styling
 - Configurable penalty types
 - Event history persistence
+- Card art
 
 ---
 
