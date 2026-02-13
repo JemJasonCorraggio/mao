@@ -143,7 +143,7 @@ function App() {
           <input
             placeholder="Game ID (blank to create)"
             value={gameId}
-            onChange={(e) => setGameId(e.target.value)}
+            onChange={(e) => setGameId(e.target.value.toUpperCase())}
           />
 
           <button disabled={!name}
